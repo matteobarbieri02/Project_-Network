@@ -14,10 +14,50 @@ install.packages("devtools")
 ```
 
 ```{r}
+devtools::install_github("pj398/movienetdata")
+
 library(movienetdata)
+
+
+data <- data(package = "movienetdata")
+head(data)
+
+data("mcu01_ironman", package = "movienetdata")
+
+iron <- data("mcu01_ironman", package = "movienetdata")
+head(mcu01_ironman)
 ```
 
+
 ```{r}
-1+1
+
+# Get the nodes by name
+mcu01_ironman$node_list
+# Get the nodes by indexing
+mcu01_ironman[[2]]
+
+
+data
+
+
+mcu16_spiderman[[2]]
+
+head(mcu16_spiderman$node_list)
+
+
+ironman <- movienetdata::mcu01_ironman
+# install.packages("network")
+library(network)
+# Create network object from adjacency matrix
+bp_net <- network(ironman$adjacency)
+# Plot the network
+plot(bp_net, label = ironman[[2]]$char_name, 
+     edge.col = "lightpink1", 
+     vertex.cex = sqrt(ironman[[2]]$nlines)/3, 
+     label.pos = 3, arrowhead.cex = 0.7,
+     vertex.col = ifelse(ironman[[2]]$char_female == 1, 
+                         "#ded649", "#55467a"), 
+     main = "Character interactions in Black Panther (2018)")
+
 ```
 
