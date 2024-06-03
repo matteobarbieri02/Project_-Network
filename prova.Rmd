@@ -1,0 +1,58 @@
+---
+title: "project"
+author: "bonatti, barbieri"
+date: "2024-06-03"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+g
+```{r}
+install.packages("devtools")
+
+devtools::install_github("pj398/movienetdata")
+
+library(movienetdata)
+
+
+data <- data(package = "movienetdata")
+head(data)
+
+data("mcu01_ironman", "movienetdata")
+
+data("mcu01_ironman", "movienetdata")
+
+# Get the nodes by name
+mcu01_ironman$node_list
+# Get the nodes by indexing
+mcu01_ironman[[2]]
+
+
+data
+a <- data("mcu16_spiderman", "movienetData")
+
+mcu16_spiderman[[2]]
+
+head(mcu16_spiderman$node_list)
+
+
+spiderman <- movienetData::mcu16_spiderman
+# install.packages("network")
+library(network)
+# Create network object from adjacency matrix
+bp_net <- network(black_panther$adjacency)
+# Plot the network
+plot(bp_net, label = black_panther[[2]]$char_name, 
+     edge.col = "lightpink1", 
+     vertex.cex = sqrt(black_panther[[2]]$nlines)/3, 
+     label.pos = 3, arrowhead.cex = 0.7,
+     vertex.col = ifelse(black_panther[[2]]$char_female == 1, 
+                         "#ded649", "#55467a"), 
+     main = "Character interactions in Black Panther (2018)")
+
+```
+
