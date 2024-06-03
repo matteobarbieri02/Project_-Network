@@ -1,0 +1,19 @@
+---
+title: "Project_network"
+author: "Barbieri, Bonatti"
+date: "2024-06-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("devtools")
+```
+
+```{r}
+library(movienetdata)
+```
+
