@@ -68,6 +68,20 @@ is_simple(g)
 In matematica e teoria dei grafi, un grafo semplice è un grafo che non contiene né cicli multipli (cicli con ripetizioni di vertici) né più archi tra gli stessi nodi.
 
 ```{r}
+max(data$amount)
+
+max_amount <- max(data$amount)
+
+# Passo 2: Filtrare il dataset per trovare la riga con l'importo massimo
+max_transaction <- data[data$amount == max_amount, ]
+
+# Passo 3: Estrarre i paesi coinvolti
+countries_involved <- max_transaction[, c("country1", "country2")]
+
+# Stampa i risultati
+print(max_transaction)
+print(countries_involved)
+
 g_w <- graph_from_data_frame(links_df, directed = FALSE)
 
 
@@ -82,9 +96,18 @@ head(E(g_w)$weight)
 
 summary(E(g_w)$weight)
 
+# check min
+min_amount <- min(data$amount)
 
+# Passo 2: Filtrare il dataset per trovare la riga con l'importo massimo
+min_transaction <- data[data$amount == min_amount, ]
+```
+
+plot
+
+```{r}
 hist(E(g_w)$weight, breaks = 25,
-     xlab= "Weights", main="Edges' Weight Distribution", col = 'lightblue', border = 'white', ylim=c(0,1000), xlim = c(3947486, 134865996900))
+     xlab= "Weights", main="Edges' Weight Distribution", col = 'lightblue', border = 'white', ylim=c(0,1000), xlim = c(6.361e+05, 3.861e+11 ))
 
 plot(g_w, edge.width = E(g_w)$weight)
 ```
@@ -145,8 +168,72 @@ hist(degree(g_w), breaks = 50, ylim = c(0,25), xlim=c(25,75), col = 'darkorange'
 ```
 
 ```{r}
+degree_dist <- function(graph) {
+  fd <- table(degree(graph))
+  d <- as.numeric(names(fd)) + 1 
+  list(d = d, fd = fd)
+}
+
+dd <- degree_dist(g_w)
+
+with(dd, plot(log(d), log(fd), main="Degree Distribution", xlab="Degree", ylab="Frequency of each Degree", pch=16, col='blue'))
+```
+## transitivity
+
+Transitivity measures the tendency of nodes to cluster together.
+```{r}
+t <- transitivity(g_w)
+t
+```
+there is an high level of clustering in our data.
+
+## strenght
+
+Strength is particularly significant when talking about weighted graphs, since it quantifies the cumulative weight of all the edges connected to a certain node, and so the importance of connections that the node has in the network.
+```{r}
+s <- graph.strength(g_w)
+summary(s)
+hist(s, breaks = 30, ylim = c(0,15), xlim=c(1.160e+10 ,2.984e+12 ), main= "Histogram of Strength",
+     xlab= "Strength", col='#FF6666')
+
+max(s)
+s
+
+max_country <- names(which.max(s))
+min_country <- names(which.min(s))
+
+# Valori corrispondenti
+max_value <- max(s)
+min_value <- min(s)
+
+# Stampa dei risultati
+cat("Il paese con il valore massimo è:", max_country, "con un valore di", max_value, "\n")
+cat("Il paese con il valore minimo è:", min_country, "con un valore di", min_value, "\n")
+```
+
+
+
+```{r}
 b <- betweenness(g_w)
 hist(b, breaks = 40, main= "Histogram of Betweenness", xlim=c(0, 150), ylim= c(0,70),
      xlab= "Betweenness", col=hcl.colors(length(b), rev = F, palette= 'blues'))
 ```
+```{r}
+b
+```
+Se il dataset rappresenta specifici tipi di commercio o settori economici in cui questi piccoli paesi giocano un ruolo cruciale come intermediari, allora è possibile che abbiano valori di betweenness centrality elevati. Ad esempio, se Estonia e Slovenia sono nodi importanti per certi flussi commerciali specifici (come tecnologia o materiali particolari), potrebbero apparire centrali in quei contesti.
 
+
+valore di betweenness centrality pari a 0: Molti paesi, come AUS, AUT, BEL, CAN, etc., hanno una betweenness centrality di 0. Questo significa che questi paesi non si trovano sui percorsi più brevi tra altri paesi nella rete commerciale.
+Valori positivi: Alcuni paesi hanno valori positivi di betweenness centrality, indicati di seguito:
+CHL (3): Cile ha una betweenness centrality di 3.
+FIN (116): Finlandia ha una betweenness centrality di 116.
+ISL (752): Islanda ha una betweenness centrality di 752, il che suggerisce che Islanda è un nodo molto importante nella rete, dato che molti percorsi più brevi passano attraverso di essa.
+JPN (40): Giappone ha una betweenness centrality di 40.
+NZL (254): Nuova Zelanda ha una betweenness centrality di 254.
+SVN (79): Slovenia ha una betweenness centrality di 79.
+Analisi:
+Importanza nella rete: Paesi come Islanda (ISL), Nuova Zelanda (NZL), Finlandia (FIN), Giappone (JPN), e Slovenia (SVN) hanno un'influenza significativa sulla rete commerciale. Molti percorsi commerciali più brevi passano attraverso questi paesi.
+Isolamento o periferia: Paesi con betweenness centrality pari a 0 non hanno un ruolo centrale nei percorsi commerciali più brevi. Possono essere considerati periferici o isolati nella rete rispetto ai percorsi più efficienti.
+Ha senso?
+Sì, ha senso interpretare i valori di betweenness centrality in questo modo. La betweenness centrality è un indicatore utile per identificare i nodi cruciali in una rete che facilitano il flusso di informazioni o beni. In una rete commerciale, i paesi con alta betweenness centrality potrebbero essere cruciali per il commercio globale, agendo come intermediari o hub attraverso cui passano molte rotte commerciali.
