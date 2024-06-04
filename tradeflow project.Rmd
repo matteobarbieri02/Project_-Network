@@ -109,7 +109,6 @@ plot
 hist(E(g_w)$weight, breaks = 25,
      xlab= "Weights", main="Edges' Weight Distribution", col = 'lightblue', border = 'white', ylim=c(0,1000), xlim = c(6.361e+05, 3.861e+11 ))
 
-plot(g_w, edge.width = E(g_w)$weight)
 ```
 Assicurati che la colonna "amount" nel tuo dataframe contenga i valori dei pesi degli archi. Una volta assegnati correttamente i pesi, dovresti essere in grado di visualizzare il grafo con i pesi sugli archi.
 
@@ -247,8 +246,64 @@ relationship between nodes’ strength and betweenness measures. In this case I 
 
 ```{r}
 most_index <- names(which.max(b))
-most_out <- nodes[most_index, ]
-namename <- most_out$name
-cat('The most important character in the network is',toupper(namename),'\n')
+
+most_index
+
+names(which.max(s))
+
+```
+
+```{r}
+library(ergm)
+am <- get.adjacency(g_w, sparse = FALSE)
+g_ergm <-as.network(am, directed = FALSE)
+ergm(g_ergm~edges) %>% summary
+```
+
+ - Estimate: The value here, 3.0754, indicates a positive effect of edges on the likelihood of edges forming. In simpler terms, the more edges exist in the network, the more likely it is for additional edges to appear.
+
+
+## Cluster Fast Greedy Algorithm
+
+This algorithm starts with a subnetwork composed only of highly connected nodes, then iteratively merges communities that result in the maximum increase in modularity; this is a measure that quantifies the quality of a partition of a network into communities. It compares the number of edges within communities to the expected number of edges in a random network with the same degree distribution.
+
+```{r}
+# use simplify because we have multiedges graph
+g_kc <- simplify(g_w)
+kc <- cluster_fast_greedy(g_kc)
+l_kc <- length(kc)
+cat('The number of clusters by the Fast Greedy Algorithm are:',l_kc,'\n')
+```
+```{r}
+mod_kc <- modularity(kc)
+cat('The Modularity Coefficient is:',mod_kc,'\n')
+## The Modularity Coefficient is: 0.4550854
+table(membership(kc))
+```
+
+```{r}
+set.seed(1234)
+
+V(g_kc)$community <- kc$membership
+
+colors <- adjustcolor(col = c("red", "violet"), alpha=1)
+
+plot(kc, g_kc, vertex.size=5, , vertex.color=colors[V(g_kc)$community], vertex.label=NA, asp=.5, main="Fast Greedy Clustering")
+```
+dendogram
+
+```{r}
+dend_col <- c("red", "violet")
+par(cex=.4)
+plot_dendrogram(kc, mode = 'hclust', colbar=dend_col, axes=FALSE)
+legend("topright", legend=c(1:length(kc)), col=dend_col, lwd=2)
+```
+### clustering by betweenness
+
+This method uses the concept of betweenness centrality. It identifies communities by iteratively removing edges with the highest betweenness centrality.
+
+```{r}
+g_ceb <- simplify(g_w)
+ceb <- cluster_edge_betweenness(g_ceb) 
 ```
 
