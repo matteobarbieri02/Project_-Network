@@ -1,0 +1,152 @@
+---
+title: "project 2"
+author: "bonatti, barbieri"
+date: "2024-06-04"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(igraph)
+library(readr)
+```
+
+
+```{r}
+data <- read.csv("C:/Users/loren/Downloads/trade-2021-flows.csv", sep = "",header = T)
+
+str(data)
+head(data)
+```
+
+
+```{r}
+# Estrai un elenco unico di paesi presenti nei dati
+nodes <- unique(c(data$from, data$to))
+
+# Crea un dataframe per i nodi
+nodes_df <- data.frame(id = nodes)
+
+# Crea un dataframe per i link
+links_df <- data[, c("from", "to")]
+
+# Rinomina le colonne per essere coerenti con gli standard di network analysis
+colnames(links_df) <- c("source", "target")
+
+# Visualizza i primi pochi nodi e link
+head(nodes_df)
+head(links_df)
+
+nrow(links_df)
+table(is.na(links_df))
+```
+
+In order to see if there are duplicate interactions between characters, I create a new dataframe from the links one and group by the source and target columns. If they occur, I will count them.
+
+```{r}
+multiple_int <- links_df %>%
+  group_by(source, target) %>%
+  summarize(n = n()) %>%
+  group_by(source, target) %>%
+  filter(n > 1)
+
+head(multiple_int)
+```
+
+
+```{r}
+g  <- graph_from_data_frame(links_df, directed = FALSE)
+#check if the graph is connected
+is_connected(g)
+```
+```{r}
+#check if the graph is simple
+is_simple(g)
+```
+In matematica e teoria dei grafi, un grafo semplice è un grafo che non contiene né cicli multipli (cicli con ripetizioni di vertici) né più archi tra gli stessi nodi.
+
+```{r}
+g_w <- graph_from_data_frame(links_df, directed = FALSE)
+
+
+E(g_w)
+#setting weights
+E(g_w)$weight <- data$amount 
+
+g_w
+
+help(E)
+head(E(g_w)$weight)
+
+summary(E(g_w)$weight)
+
+
+hist(E(g_w)$weight, breaks = 25,
+     xlab= "Weights", main="Edges' Weight Distribution", col = 'lightblue', border = 'white', ylim=c(0,1000), xlim = c(3947486, 134865996900))
+
+plot(g_w, edge.width = E(g_w)$weight)
+```
+Assicurati che la colonna "amount" nel tuo dataframe contenga i valori dei pesi degli archi. Una volta assegnati correttamente i pesi, dovresti essere in grado di visualizzare il grafo con i pesi sugli archi.
+
+
+
+```{r}
+head(table(E(g_w)$weight))
+```
+Per ciascun peso elencato (636141, 688352, 743114, 1018557, 1418345, 1601447), il valore di frequenza è 1. Questo significa che ciascuno di questi pesi appare una sola volta tra gli archi del grafo g_w.
+
+```{r}
+library(visNetwork)
+
+vis_g <- toVisNetworkData(g)
+
+
+visNetwork(
+  nodes = vis_g$nodes,
+  edges = vis_g$edges,
+  width = "100%",
+  height = '500px'
+)
+
+```
+```{r}
+vis_g_w <- toVisNetworkData(g_w)
+
+visNetwork(
+  nodes = vis_g_w$nodes,
+  edges = vis_g_w$edges,
+  width = "100%",
+  height = '500px'
+)
+```
+
+
+
+## analysis 
+
+```{r}
+table(degree(g_w))
+```
+
+Ci sono 2 nodi con un grado di 32.
+Ci sono 7 nodi con un grado di 33.
+C'è 1 nodo con un grado di 70.
+Ci sono 3 nodi con un grado di 71.
+Ci sono 7 nodi con un grado di 72.
+Ci sono 22 nodi con un grado di 73.
+
+
+```{r}
+hist(degree(g_w), breaks = 50, ylim = c(0,25), xlim=c(25,75), col = 'darkorange',
+     xlab= "Degree",main = "Degree")
+
+```
+
+```{r}
+b <- betweenness(g_w)
+hist(b, breaks = 40, main= "Histogram of Betweenness", xlim=c(0, 150), ylim= c(0,70),
+     xlab= "Betweenness", col=hcl.colors(length(b), rev = F, palette= 'blues'))
+```
+
