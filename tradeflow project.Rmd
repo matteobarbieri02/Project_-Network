@@ -11,11 +11,16 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(igraph)
 library(readr)
+install.packages("ergm")
 ```
 
+Percorsi:
+
+- Matte : C:/Users/bmatt/Desktop/UNICATT/Corsi/NETWORK DATA/trade-2021-flows.csv
+- Lollo: C:/Users/loren/Downloads/trade-2021-flows.csv
 
 ```{r}
-data <- read.csv("C:/Users/loren/Downloads/trade-2021-flows.csv", sep = "",header = T)
+data <- read.csv("C:/Users/bmatt/Desktop/UNICATT/Corsi/NETWORK DATA/trade-2021-flows.csv", sep = "",header = T)
 
 str(data)
 head(data)
@@ -86,6 +91,7 @@ g_w <- graph_from_data_frame(links_df, directed = FALSE)
 
 
 E(g_w)
+
 #setting weights
 E(g_w)$weight <- data$amount 
 
@@ -144,9 +150,7 @@ visNetwork(
 )
 ```
 
-
-
-## analysis 
+## Degree analysis 
 
 ```{r}
 table(degree(g_w))
@@ -175,7 +179,7 @@ degree_dist <- function(graph) {
 
 dd <- degree_dist(g_w)
 
-with(dd, plot(log(d), log(fd), main="Degree Distribution", xlab="Degree", ylab="Frequency of each Degree", pch=16, col='blue'))
+with(dd, plot(d, fd, main="Degree Distribution", xlab="Degree", ylab="Frequency of each Degree", pch=16, col='blue', ylim = c(0,30), xlim = c(0, 100)))
 ```
 ## transitivity
 
@@ -184,9 +188,10 @@ Transitivity measures the tendency of nodes to cluster together.
 t <- transitivity(g_w)
 t
 ```
-there is an high level of clustering in our data.
+There is an high level of clustering in our data.
 
-## strenght
+
+## Strength
 
 Strength is particularly significant when talking about weighted graphs, since it quantifies the cumulative weight of all the edges connected to a certain node, and so the importance of connections that the node has in the network.
 ```{r}
@@ -210,7 +215,7 @@ cat("Il paese con il valore massimo è:", max_country, "con un valore di", max_v
 cat("Il paese con il valore minimo è:", min_country, "con un valore di", min_value, "\n")
 ```
 
-## betweenness
+## Betweenness
 
 ```{r}
 b <- betweenness(g_w)
@@ -220,29 +225,29 @@ hist(b, breaks = 40, main= "Histogram of Betweenness", xlim=c(0, 150), ylim= c(0
 ```{r}
 b
 ```
-Se il dataset rappresenta specifici tipi di commercio o settori economici in cui questi piccoli paesi giocano un ruolo cruciale come intermediari, allora è possibile che abbiano valori di betweenness centrality elevati. Ad esempio, se Estonia e Slovenia sono nodi importanti per certi flussi commerciali specifici (come tecnologia o materiali particolari), potrebbero apparire centrali in quei contesti.
+From this analysis, it can be observed that small countries play a crucial role as intermediaries, which is why they have high betweenness centrality values. For example, if Estonia and Slovenia are important nodes for specific trade flows (such as technology or particular materials), they may appear central in those contexts.
 
+At the same time, many countries, such as AUS, AUT, BEL, CAN, etc., have a betweenness centrality of 0. This means that these countries are not on the shortest paths between other countries in the trade network.
 
-valore di betweenness centrality pari a 0: Molti paesi, come AUS, AUT, BEL, CAN, etc., hanno una betweenness centrality di 0. Questo significa che questi paesi non si trovano sui percorsi più brevi tra altri paesi nella rete commerciale.
-Valori positivi: Alcuni paesi hanno valori positivi di betweenness centrality, indicati di seguito:
-CHL (3): Cile ha una betweenness centrality di 3.
-FIN (116): Finlandia ha una betweenness centrality di 116.
-ISL (752): Islanda ha una betweenness centrality di 752, il che suggerisce che Islanda è un nodo molto importante nella rete, dato che molti percorsi più brevi passano attraverso di essa.
-JPN (40): Giappone ha una betweenness centrality di 40.
-NZL (254): Nuova Zelanda ha una betweenness centrality di 254.
-SVN (79): Slovenia ha una betweenness centrality di 79.
-Analisi:
-Importanza nella rete: Paesi come Islanda (ISL), Nuova Zelanda (NZL), Finlandia (FIN), Giappone (JPN), e Slovenia (SVN) hanno un'influenza significativa sulla rete commerciale. Molti percorsi commerciali più brevi passano attraverso questi paesi.
-Isolamento o periferia: Paesi con betweenness centrality pari a 0 non hanno un ruolo centrale nei percorsi commerciali più brevi. Possono essere considerati periferici o isolati nella rete rispetto ai percorsi più efficienti.
-Ha senso?
-Sì, ha senso interpretare i valori di betweenness centrality in questo modo. La betweenness centrality è un indicatore utile per identificare i nodi cruciali in una rete che facilitano il flusso di informazioni o beni. In una rete commerciale, i paesi con alta betweenness centrality potrebbero essere cruciali per il commercio globale, agendo come intermediari o hub attraverso cui passano molte rotte commerciali.
+Positive values: Some countries have positive betweenness centrality values, indicated below:
+CHL (3): Chile has a betweenness centrality of 3.
+FIN (116): Finland has a betweenness centrality of 116.
+ISL (752): Iceland has a betweenness centrality of 752, which suggests that Iceland is a very important node in the network, as many shortest paths pass through it.
+JPN (40): Japan has a betweenness centrality of 40.
+NZL (254): New Zealand has a betweenness centrality of 254.
+SVN (79): Slovenia has a betweenness centrality of 79.
+
+Countries like Iceland (ISL), New Zealand (NZL), Finland (FIN), Japan (JPN), and Slovenia (SVN) have significant influence on the trade network. Many shorter trade paths pass through these countries. Countries with a betweenness centrality of 0 do not have a central role in the shortest trade paths. They can be considered peripheral or isolated in the network relative to the most efficient paths.
+
+Betweenness centrality is a useful indicator for identifying crucial nodes in a network that facilitate the flow of information or goods. In a trade network, countries with high betweenness centrality may be crucial for global trade, acting as intermediaries or hubs through which many trade routes pass.
 
 ```{r}
 plot(s, b, ylab="Betweenness", xlab= "Strength", main= "Betweenness vs Strength", pch=16, col=hcl.colors(length(b), rev = F, palette= 'blues'))
 ```
-relationship between nodes’ strength and betweenness measures. In this case I can see that there are very few observations that have high values in both centrality measures. Therefore one of these points could be the “important character” in our network.
+Relationship between nodes’ strength and betweenness measures. In this case I can see that there are very few observations that have high values in both centrality measures. Therefore one of these points could be the “important countries” in our network.
+We can also observe that apparently countries with higher betweenness tend to have lower strength.
 
-## important countries
+## Important countries
 
 ```{r}
 most_index <- names(which.max(b))
@@ -252,6 +257,9 @@ most_index
 names(which.max(s))
 
 ```
+## Network Modelling
+
+### ERGM model
 
 ```{r}
 library(ergm)
@@ -263,7 +271,9 @@ ergm(g_ergm~edges) %>% summary
  - Estimate: The value here, 3.0754, indicates a positive effect of edges on the likelihood of edges forming. In simpler terms, the more edges exist in the network, the more likely it is for additional edges to appear.
 
 
-## Cluster Fast Greedy Algorithm
+## Clustering
+
+### Fast Greedy Algorithm
 
 This algorithm starts with a subnetwork composed only of highly connected nodes, then iteratively merges communities that result in the maximum increase in modularity; this is a measure that quantifies the quality of a partition of a network into communities. It compares the number of edges within communities to the expected number of edges in a random network with the same degree distribution.
 
@@ -274,10 +284,8 @@ kc <- cluster_fast_greedy(g_kc)
 l_kc <- length(kc)
 cat('The number of clusters by the Fast Greedy Algorithm are:',l_kc,'\n')
 ```
+
 ```{r}
-mod_kc <- modularity(kc)
-cat('The Modularity Coefficient is:',mod_kc,'\n')
-## The Modularity Coefficient is: 0.4550854
 table(membership(kc))
 ```
 
@@ -290,7 +298,8 @@ colors <- adjustcolor(col = c("red", "violet"), alpha=1)
 
 plot(kc, g_kc, vertex.size=5, , vertex.color=colors[V(g_kc)$community], vertex.label=NA, asp=.5, main="Fast Greedy Clustering")
 ```
-dendogram
+
+Below we plotted the dendrogram.
 
 ```{r}
 dend_col <- c("red", "violet")
@@ -298,12 +307,54 @@ par(cex=.4)
 plot_dendrogram(kc, mode = 'hclust', colbar=dend_col, axes=FALSE)
 legend("topright", legend=c(1:length(kc)), col=dend_col, lwd=2)
 ```
-### clustering by betweenness
+
+Especially from the dendrogram it is possible to denote that the 2 clusters obtained are divided in his way:
+
+- Cluster 1: American and pacific countries
+- Clsuter 2: European countries
+
+We calculate the modularity score for the fast greedy clustering algorithm, to understand how well the method is able to divide the network into clusters.
+
+```{r}
+mod_kc <- modularity(kc)
+cat('The Modularity Coefficient is:',mod_kc,'\n')
+```
+
+
+### Louvain clustering
 
 This method uses the concept of betweenness centrality. It identifies communities by iteratively removing edges with the highest betweenness centrality.
 
 ```{r}
-g_ceb <- simplify(g_w)
-ceb <- cluster_edge_betweenness(g_ceb) 
+g_la <- g_w
+louvain <- cluster_louvain(g_la) 
 ```
+
+```{r}
+l_cla <- length(ceb)
+cat('The number of clusters by Edge Betweenness Algorithm are:',l_ceb,'\n')
+```
+```{r}
+plot(louvain, g_la, vertex.size=5, vertex.label=NA, asp=.5, main="Louvain Clustering")
+```
+```{r}
+table(membership(louvain))
+```
+We calculate the modularity score also for the Louvain algorithm, to understand how well the method is able to divide the network into clusters.
+
+```{r}
+mod_la <- modularity(louvain)
+cat('The modularity Coefficient is:',mod_la,'\n')
+```
+## Modularity Scores table
+```{r}
+mod_tab <- cbind(mod_kc, mod_la)
+mod_tab
+```
+
+Louvain algorithm and Fast Greedy clustering have very similar modularity score. This means that there is no particular difference in how well the methods divide the network into communities.
+
+
+
+## Subgraphs
 
