@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(igraph)
 library(readr)
-install.packages("ergm")
+# install.packages("ergm")
 ```
 
 Percorsi:
@@ -20,7 +20,7 @@ Percorsi:
 - Lollo: C:/Users/loren/Downloads/trade-2021-flows.csv
 
 ```{r}
-data <- read.csv("C:/Users/bmatt/Desktop/UNICATT/Corsi/NETWORK DATA/trade-2021-flows.csv", sep = "",header = T)
+data <- read.csv("C:/Users/loren/Downloads/trade-2021-flows.csv", sep = "",header = T)
 
 str(data)
 head(data)
@@ -257,6 +257,7 @@ most_index
 names(which.max(s))
 
 ```
+
 ## Network Modelling
 
 ### ERGM model
@@ -323,17 +324,35 @@ cat('The Modularity Coefficient is:',mod_kc,'\n')
 
 ### Louvain clustering
 
+**Algorithm Type**:
+
+ - Louvain clustering is a modularity-based optimization method.
+
+**Mechanism**:
+
+The algorithm starts with each node in its own community.
+It iteratively merges communities in a way that maximizes the modularity score, which measures the density of links inside communities compared to links between communities.
+
+It performs a two-phase process:
+ - Local Moving: Nodes are moved between communities to optimize modularity.
+ - Aggregation: Communities are aggregated into a single node and the process is repeated.
+
+downsides of the method: It may not detect small or loosely connected communities effectively if they do not significantly increase modularity.
+
 This method uses the concept of betweenness centrality. It identifies communities by iteratively removing edges with the highest betweenness centrality.
 
 ```{r}
+set.seed(20141)
 g_la <- g_w
 louvain <- cluster_louvain(g_la) 
 ```
 
 ```{r}
-l_cla <- length(ceb)
-cat('The number of clusters by Edge Betweenness Algorithm are:',l_ceb,'\n')
+l_cla <- length(louvain)
+cat('The number of clusters by Edge Betweenness Algorithm are:',l_cla,'\n')
 ```
+
+
 ```{r}
 plot(louvain, g_la, vertex.size=5, vertex.label=NA, asp=.5, main="Louvain Clustering")
 ```
@@ -342,6 +361,28 @@ plot(louvain, g_la, vertex.size=5, vertex.label=NA, asp=.5, main="Louvain Cluste
 ```{r}
 table(membership(louvain))
 ```
+```{r}
+membership_info <- membership(louvain)
+
+# Create a table of memberships
+membership_table <- table(membership_info)
+
+vertex_names <- V(g_la)$name
+
+
+cluster1_nodes <- vertex_names[membership_info == 1]
+cluster2_nodes <- vertex_names[membership_info == 2]
+
+# Print the countries in each cluster
+cat("Countries in Cluster 1:\n")
+print(cluster1_nodes)
+
+cat("Countries in Cluster 2:\n")
+print(cluster2_nodes)
+
+```
+
+
 We calculate the modularity score also for the Louvain algorithm, to understand how well the method is able to divide the network into clusters.
 
 ```{r}
@@ -353,7 +394,21 @@ cat('The modularity Coefficient is:',mod_la,'\n')
 
 Cluster by edge betweenness, also known as the Girvan-Newman algorithm, is a method used in network analysis to identify community structure within a network. The basic idea is to iteratively remove edges from the network that have the highest betweenness, which often lie between different communities, until the network is divided into distinct clusters. 
 
+**Algorithm Type**:
+
+ - Edge Betweenness clustering is based on the concept of edge **betweenness centrality**.
+
+**Mechanism**:
+
+Edge betweenness centrality measures the number of shortest paths that pass through each edge.
+The algorithm removes edges with the highest betweenness centrality, which are considered to be "bridges" between communities.
+This process is repeated iteratively, recalculating betweenness after each removal, until the network is fragmented into desired communities.
+
+Edge Betweenness can identify small or weakly connected communities but is computationally expensive.
+
+
 ```{r}
+set.seed(20141)
 g_ceb <- g_w
 ceb <- cluster_edge_betweenness(g_ceb)
 ```
