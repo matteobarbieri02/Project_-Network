@@ -20,7 +20,7 @@ Percorsi:
 - Lollo: C:/Users/loren/Downloads/trade-2021-flows.csv
 
 ```{r}
-data <- read.csv("C:/Users/loren/Downloads/trade-2021-flows.csv", sep = "",header = T)
+data <- read.csv("C:/Users/bmatt/Desktop/UNICATT/Corsi/NETWORK DATA/trade-2021-flows.csv", sep = "",header = T)
 
 str(data)
 head(data)
@@ -480,11 +480,54 @@ visNetwork(cluster_nodes, links_df, width = "100%") %>%
 
 
 ```{r}
-links_2 <- links_df
+links_2 <- data
 
 links_2$id <- links_2$from
 
 prova_merge <- merge(links_2, cluster_nodes, by="id", all.x=TRUE)
 head(prova_merge)
+```
+```{r}
+prova_merge <- subset(prova_merge)
+```
+
+```{r}
+df_clu1 <- prova_merge[prova_merge$cluster==1, ]
+A <- df_clu1[,-1]
+head(A)
+```
+
+```{r}
+df_clu2 <- prova_merge[prova_merge$cluster==2, ]
+B <- df_clu2[,-1]
+head(B)
+```
+
+```{r}
+g_cl1 <- graph_from_data_frame(A, directed = FALSE)
+
+
+vis_g_cl1 <- toVisNetworkData(g_cl1)
+
+visNetwork(
+  nodes = vis_g_cl1$nodes,
+  edges = vis_g_cl1$edges,
+  width = "100%",
+  height = '500px'
+)
+```
+
+```{r}
+g_cl2 <- graph_from_data_frame(B, directed = FALSE)
+
+
+vis_g_cl2 <- toVisNetworkData(g_cl2)
+
+visNetwork(
+  nodes = vis_g_cl2$nodes,
+  edges = vis_g_cl2$edges,
+  width = "100%",
+  height = '500px'
+)
 ```
 
