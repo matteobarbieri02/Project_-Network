@@ -337,6 +337,8 @@ cat('The number of clusters by Edge Betweenness Algorithm are:',l_ceb,'\n')
 ```{r}
 plot(louvain, g_la, vertex.size=5, vertex.label=NA, asp=.5, main="Louvain Clustering")
 ```
+
+
 ```{r}
 table(membership(louvain))
 ```
@@ -346,15 +348,38 @@ We calculate the modularity score also for the Louvain algorithm, to understand 
 mod_la <- modularity(louvain)
 cat('The modularity Coefficient is:',mod_la,'\n')
 ```
-## Modularity Scores table
+
+## Cluster by Edge Betweeness
+
+Cluster by edge betweenness, also known as the Girvan-Newman algorithm, is a method used in network analysis to identify community structure within a network. The basic idea is to iteratively remove edges from the network that have the highest betweenness, which often lie between different communities, until the network is divided into distinct clusters. 
+
 ```{r}
-mod_tab <- cbind(mod_kc, mod_la)
+g_ceb <- g_w
+ceb <- cluster_edge_betweenness(g_ceb)
+```
+```{r}
+l_ceb <- length(ceb)
+cat('The number of clusters by Edge Betweenness Algorithm are:',l_ceb,'\n')
+```
+```{r}
+mod_ceb <- modularity(ceb)
+cat('The Modularity Coefficient is:',mod_ceb,'\n')
+```
+This suggests that the algorithm did not identify any meaningful community structure within the network. In other words, the network remains as a single connected component without breaking down into smaller, distinct clusters.
+
+This could happen because the network could be highly connected, with most nodes being directly or indirectly connected to each other through multiple pathways, making it difficult for the algorithm to find edges that significantly increase modularity when removed.
+
+## Modularity Scores table
+
+```{r}
+mod_tab <- cbind(mod_kc, mod_ceb, mod_la)
 mod_tab
 ```
 
-Louvain algorithm and Fast Greedy clustering have very similar modularity score. This means that there is no particular difference in how well the methods divide the network into communities.
+Louvain algorithm and Fast Greedy clustering have very similar modularity score. This means that there is no particular difference in how well the methods divide the network into communities, in fact they both suggest 2 clusters with similar size. 
+Instead, as we have seen previusly, Cluster by edge betweenness has a modularity core equal to 0 because it was not able to detect any community inside the network.
 
 
 
-## Subgraphs
+## Subgraphing
 
