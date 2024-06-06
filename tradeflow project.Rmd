@@ -438,3 +438,53 @@ Instead, as we have seen previusly, Cluster by edge betweenness has a modularity
 
 ## Subgraphing
 
+### Assigning nodes membership
+
+```{r}
+cluster_df <- data.frame(as.list(membership(kc)))
+cluster_df <- as.data.frame(t(cluster_df))
+cluster_df$id <- rownames(cluster_df)
+
+cluster_df$id <- gsub("X", "", cluster_df$id)
+rownames(cluster_df) <- gsub("X", "", rownames(cluster_df))
+
+nodes_df$id <- rownames(nodes_df)
+
+cluster_nodes <- merge(cluster_df, nodes_df, by = "id", all.x = TRUE)
+cluster_nodes <- rename(cluster_nodes, "cluster" = "V1")
+```
+
+```{r}
+
+colnames(links_df)<-c("from", "to")
+
+visNetwork(cluster_nodes, links_df, width = "100%") %>%
+  visIgraphLayout() %>%
+  visNodes(
+    shape = "dot",
+    color = list(
+      background = "#0085AF",
+      border = "#013848",
+      highlight = "#FF8000"
+    ),
+    shadow = list(enabled = TRUE, size = 10)
+  ) %>%
+  visEdges(
+    shadow = FALSE,
+    color = list(color = "#0085AF", highlight = "#C62F4B")
+  ) %>%
+  visOptions(highlightNearest = list(enabled = T, degree = 1, hover = T),
+             selectedBy = "cluster") %>% 
+  visLayout(randomSeed = 11)
+```
+
+
+```{r}
+links_2 <- links_df
+
+links_2$id <- links_2$from
+
+prova_merge <- merge(links_2, cluster_nodes, by="id", all.x=TRUE)
+head(prova_merge)
+```
+
