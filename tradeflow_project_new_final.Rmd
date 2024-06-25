@@ -1,0 +1,677 @@
+---
+title: "Network data analysis project - Tradeflow dataset"
+author: "Barbieri Matteo, Bonatti Lorenzo"
+date: "2024-06-04"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(igraph)
+library(readr)
+# install.packages("ergm")
+```
+
+
+## The dataset
+
+Our dataset consists of 1344 rows representing the connections between countries. It contains 3 columns: a "from" column, a "to" column, and a third column called "amount." The "amount" column contains the annual values of trade transactions, both imports and exports, between different countries. Amounts exceeding one billion dollars are realistic for annual trade transactions between large economies (e.g., Australia and China). Lower amounts, such as 39 million dollars, may seem low for annual transactions between industrialized countries but can be plausible if they occur between economically less integrated or geographically distant countries.
+
+```{r}
+data <- read.csv("C:/Users/bmatt/Desktop/UNICATT/Corsi/NETWORK DATA/trade-2021-flows.csv", sep = "",header = T)
+
+str(data)
+head(data)
+dim(data)
+```
+If we look at the initial values, we can see that the trade transaction value between two large countries like Australia and Brazil is high, whereas the trade transaction value between two distant and economically less integrated countries like Australia and Austria is very low.
+
+```{r}
+nodes <- unique(c(data$from, data$to))
+
+nodes_df <- data.frame(id = nodes)
+
+links_df <- data[, c("from", "to")] # we removed the amount column, ONLY LINKS
+
+colnames(links_df) <- c("source", "target")
+```
+
+
+```{r}
+head(nodes_df)
+head(links_df)
+
+table(is.na(links_df))
+```
+
+In order to see if there are duplicate interactions between countries, I create a new dataframe from the links_df by grouping the source and target columns and retrieving only the connections that occur more than 1 time. If they occur, we will count them.
+
+In our case there are no multiple connections.
+
+```{r}
+multiple_int <- links_df %>%
+  group_by(source, target) %>%
+  summarize(n = n()) %>%
+  group_by(source, target) %>%
+  filter(n > 1)
+
+head(multiple_int)
+```
+
+## Unweighted graph
+
+```{r}
+g  <- graph_from_data_frame(links_df, directed = T)
+#check if the graph is connected
+is_connected(g)
+```
+```{r}
+#check if the graph is simple
+is_simple(g)
+```
+
+In mathematics and graph theory, a simple graph is a graph that contains neither multiple cycles (cycles with repeated vertices) nor multiple edges between the same nodes.
+
+```{r}
+max_amount <- max(data$amount)
+min_amount <- min(data$amount)
+max_transaction <- data[data$amount == max_amount, ]
+min_transaction <- data[data$amount == min_amount, ]
+print(max_transaction)
+print(min_transaction)
+```
+
+## Weighted graph
+```{r}
+g_w <- graph_from_data_frame(links_df, directed = T)
+
+#setting weights
+E(g_w)$weight <- data$amount 
+
+is_simple(g_w)
+
+# weight of the first edges
+head(E(g_w)$weight)
+
+summary(E(g_w)$weight)
+```
+## Weights distribution
+
+```{r}
+hist(E(g_w)$weight, breaks = 25,
+     xlab= "Weights", main="Edges' Weight Distribution", col = 'lightblue', border = 'white', ylim=c(0,1000), xlim = c(6.361e+05, 1.2e+11 ))
+
+```
+From the following plot we can observe that most import or export transaction between countries have an amount that don't exceed 20 billion.
+
+```{r}
+head(table(E(g_w)$weight))
+```
+For each listed weight the frequency value is 1. This means that each of these weights appears only once among the edges of the graph.
+
+## Weighted graph visualization
+
+```{r}
+library(visNetwork)
+vis_g_w <- toVisNetworkData(g_w)
+
+visNetwork(
+  nodes = vis_g_w$nodes,
+  edges = vis_g_w$edges,
+  width = "100%",
+  height = '500px'
+)
+```
+
+
+## Degree analysis 
+
+```{r}
+table(degree(g_w, loops = FALSE))
+```
+
+There are 2 nodes with a degree of 32.
+There are 7 nodes with a degree of 33.
+There is 1 node with a degree of 70.
+There are 3 nodes with a degree of 71.
+There are 7 nodes with a degree of 72.
+There are 22 nodes with a degree of 73.
+
+
+```{r}
+hist(degree(g_w), breaks = 50, ylim = c(0,25), xlim=c(30,74), col = 'darkorange',
+     xlab= "Degree",main = "Degree")
+
+```
+
+## Transitivity
+
+Transitivity measures the tendency of nodes to cluster together.
+```{r}
+t <- transitivity(g_w)
+t
+```
+A transitivity value close to 1 suggests a high level of clustering within the graph. This means that if country A is connected to country B and country B is connected to country C, there is a high probability that country A is also connected to country C.
+
+The value 0.9109 indicates that there is a very strong tendency for the nodes (countries) in this graph to form triangles, suggesting dense interconnections among the countries.
+In practical terms, this high transitivity suggests that the countries in this graph are highly interconnected in terms of their trade relationships.
+
+The result is consistent with the current world we live in, especially considering the phenomenon of globalization since the 2000s:
+
+- Globalization has led to an intensification of economic relationships between countries. Global supply chains have become increasingly complex, and many countries now regularly trade with a wide range of international partners. This increase in bilateral trade relationships contributes to high transitivity in the trade relationship graph.
+
+- Many countries have entered into bilateral and multilateral trade agreements to reduce tariff and non-tariff barriers, facilitating the free flow of goods and services. These agreements increase the number of connections in the graph, strengthening the tendency to form triangles and thus increasing transitivity.
+
+- Technological advancements and improvements in the transportation sector have reduced the costs and time of international trade. This has also enabled even distant countries to connect more easily, contributing to a denser and more interconnected global trade network.
+
+- Globalization has also stimulated an increase in foreign direct investment, where multinational corporations establish operations in various countries. This type of investment creates additional economic and trade links between countries, further increasing the graph's transitivity.
+
+
+## Strength
+
+Strength is particularly significant when talking about weighted graphs, since it quantifies the cumulative weight of all the edges connected to a certain node, and so the importance of connections that the node has in the network.
+Strength in this context measures the total trade volume (both imports and exports) that a country engages in with other countries.
+
+```{r}
+s <- graph.strength(g_w)
+summary(s)
+hist(s, breaks = 30, ylim = c(0,15), xlim=c(1.160e+10 ,2.984e+12 ), main= "Histogram of Strength",
+     xlab= "Strength", col='#FF6666')
+```
+
+
+```{r}
+max_country <- names(which.max(s))
+min_country <- names(which.min(s))
+
+max_value <- max(s)
+min_value <- min(s)
+
+cat("The country with the maximum strength is", max_country, "with a total amount of", max_value, "\n")
+cat("The country with the minimum strength is", min_country, "with a total amount of", min_value, "\n")
+```
+Given that our directed graph represents the annual import and export transactions between countries:
+
+ - The USA has the maximum strength, with a total transaction value of approximately 2.984 trillion USD. This high value is consistent with the USA being the largest economy in the world, engaging in extensive trade activities with numerous countries. The significant volume of trade underscores the USA's pivotal role in global commerce, importing and exporting a wide array of goods and services.
+
+ - Iceland (ISL) has the minimum strength, with a total transaction value of approximately 11.6 billion USD. This lower value is expected for a smaller economy with a limited population and less diversified industrial base. Iceland's trade volume is naturally smaller compared to larger economies, reflecting its specific economic activities and trade relations primarily within its geographical region and with a few global partners.
+
+The significant disparity between the maximum and minimum strengths highlights the varying economic scales and trade capacities of different countries. The USA's dominant position is indicative of its extensive economic reach and influence, while Iceland's smaller trade volume illustrates the economic realities of smaller, less industrialized nations.
+
+```{r}
+max_countries <- names(sort(s, decreasing = TRUE)[1:10])
+max_values <- sort(s, decreasing = TRUE)[1:10]
+
+# Find the six countries with the minimum strength
+min_countries <- names(sort(s, decreasing = FALSE)[1:10])
+min_values <- sort(s, decreasing = FALSE)[1:10]
+
+# Print the results
+cat("Countries with the maximum strength:\n")
+for (i in 1:10) {
+  cat(max_countries[i], "with strength:", max_values[i], "\n")
+}
+
+cat("\nCountries with the minimum strength:\n")
+for (i in 1:10) {
+  cat(min_countries[i], "with strength:", min_values[i], "\n")
+}
+```
+
+## Betweenness
+
+```{r}
+b <- betweenness(g_w)
+hist(b, breaks = 40, main= "Histogram of Betweenness", xlim=c(0, 1200), ylim= c(0,70),
+     xlab= "Betweenness", col=hcl.colors(length(b), rev = F, palette= 'blues'))
+```
+```{r}
+b
+```
+From this analysis, it can be observed that small countries play a crucial role as intermediaries, which is why they have high betweenness centrality values.
+
+At the same time, many countries, such as Australia (AUS), Austria (AUT), Belgium (BEL), Canada (CAN), and others, have a betweenness centrality of 0. This means that these countries are not on the shortest paths between other countries in the trade network.
+
+Some countries have positive betweenness centrality values, indicating their importance in the network:
+
+CHL (8): Chile has a betweenness centrality of 8.
+ISL (1154): Iceland has a betweenness centrality of 1154, which suggests that Iceland is a very important node in the network, as many shortest paths pass through it.
+LUX (302): Luxembourg has a betweenness centrality of 302.
+EST (76): Estonia has a betweenness centrality of 76.
+NZL (356): New Zealand has a betweenness centrality of 356.
+SVN (113): Slovenia has a betweenness centrality of 113.
+
+Countries like Iceland (ISL), New Zealand (NZL), Luxembourg, Estonia, Chile and Slovenia (SVN) have significant influence on the trade network. Many shorter trade paths pass through these countries. 
+
+This result might initially seem controvertial, as these countries are not typically viewed as central players in global commerce. However, this finding can be explained by the nature of the weights assigned to the edges in our graph.
+When calculating betweenness centrality, the algorithm seeks the shortest paths between nodes, where "shortest" means the paths with the smallest cumulative weights. In this context, a smaller weight indicates a smaller transaction amount.
+
+These smaller weights create shorter paths in the graph's mathematical sense, making these countries like Iceland, Luxembourg, Estonia etc main connectors within the network. As a result, many shortest paths in the network pass through these countries, even though the actual volume of transactions they handle might be less significant compared to major economic powerhouses.
+
+This mathematical perspective provides a unique insight into the structure and dynamics of international trade because, despite not being major players in terms of overall trade volume, these countries emerge as central nodes in the network due to their high betweenness centrality. 
+
+
+### Betweenness vs strength
+```{r}
+plot(s, b, ylab="Betweenness", xlab= "Strength", main= "Betweenness vs Strength", pch=16, col=hcl.colors(length(b), rev = F, palette= 'blues'))
+```
+In this case I can see that there are no observations that have high values in both centrality measures. Therefore we could consider as the “important countries” in our network the one with the highest betweenness and the one with the highest strength.
+We can also observe that apparently countries with higher betweenness tend to have lower strength, because as we said previously when calculating the shortest paths the algorithm seeks the shortest paths between nodes, where "shortest" means the paths with the smallest cumulative weights.
+
+## Important countries
+
+```{r}
+names(which.max(b))
+names(which.max(s))
+```
+The country with the highest strength is the USA, which aligns with its status as the world's largest economy. On the other hand, Iceland has the highest betweenness centrality, indicating that it is the less important country from a trade point of view: a lot of shortest paths passes to Iceland because we have a weighted graph and the edges connected to Iceland are the one with smallest weight. So in our context the most central countries in the network are the one with small betweenness.
+
+## Network Modelling
+
+### ERGM model
+
+In general, the Exponential Random Graph Model is a statistical model used to capture dependences and patterns in network data. It estimates the effect of the edges predictor on the network structure. 
+For positive value of the coefficient, it means that as the number of edges in the network increases, the log-odds of observing those edges increases. The lower probability of edges, instead, indicates that the model is estimating a tendency for the network to have fewer connections than would be expected under a random or null model.
+
+```{r}
+library(ergm)
+am <- get.adjacency(g_w, sparse = FALSE)
+g_ergm <-as.network(am, directed = TRUE)
+ergm(g_ergm~edges) %>% summary
+```
+
+- The value here, 1.26851, indicates a positive effect of edges on the likelihood of edges forming. In simpler terms, the more edges exist in the network, the more likely it is for additional edges to appear.
+A positive coefficient, such as 1.26851, indicates that the presence of an edge significantly increases the likelihood of additional edges forming. This is statistically significant, suggesting that the observed network structure has a strong propensity for connectivity.
+
+
+## Clustering
+
+### Walktrap clustering algorithm
+
+This algorithm starts with a subnetwork composed only of highly connected nodes, then iteratively merges communities that result in the maximum increase in modularity; this is a measure that quantifies the quality of a partition of a network into communities. It compares the number of edges within communities to the expected number of edges in a random network with the same degree distribution.
+
+```{r}
+wk <- cluster_walktrap(g_w)
+
+l_wk <- length(wk)
+cat('The number of clusters are:',l_wk,'\n')
+
+cluster_labels <- membership(wk)
+print(cluster_labels)
+
+
+```
+
+```{r}
+table(membership(wk))
+```
+
+```{r}
+european_cluster <- which(membership(wk) == 1)
+american_oceania_cluster <- which(membership(wk) == 2)
+
+cat("European Cluster Countries:\n")
+print(V(g)$name[european_cluster])
+
+cat("\nAmerican and Oceania Cluster Countries:\n")
+print(V(g)$name[american_oceania_cluster])
+```
+
+```{r}
+set.seed(1234)
+
+V(g_w)$community <- wk$membership
+
+colors <- adjustcolor(col = c("red", "violet"), alpha=1)
+
+plot(wk, g_w, vertex.size=5, , vertex.color=colors[V(g_w)$community], vertex.label=NA, asp=.5, main="Walktrap clustering")
+```
+
+#### Dendrogram
+
+```{r}
+dend_col <- c("red", "violet")
+par(cex=.4)
+plot_dendrogram(wk, mode = 'hclust', colbar=dend_col, axes=FALSE)
+legend("topright", legend=c(1:length(wk)), col=dend_col, lwd=2)
+```
+
+Especially from the dendrogram it is possible to denote that the 2 clusters obtained are divided in his way:
+
+- Cluster 1: American and pacific countries
+- Clsuter 2: European countries
+
+We calculate the modularity score for the Walktrap algorithm, to understand how well the method is able to divide the network into clusters.
+
+```{r}
+mod_wk <- modularity(wk)
+cat('The Modularity Coefficient is:',mod_wk,'\n')
+```
+
+
+### Label Propagation algorithm
+
+**Algorithm Type:**
+
+Label Propagation is a label-based clustering method.
+Mechanism:
+
+The algorithm initializes each node with a unique label. It then iteratively propagates labels through the network based on the labels of neighboring nodes. At each iteration, each node adopts the label that appears most frequently among its neighbors. This process continues until the labels stabilize, meaning that nodes no longer change their labels or only a predefined number of iterations has been reached.
+
+The Label Propagation algorithm can be summarized as follows:
+
+**Initialization**: Assign a unique label to each node.
+**Label Propagation**: Iteratively update each node's label based on the majority label among its neighbors.
+**Convergence**: Stop when labels stabilize or after a predetermined number of iterations.
+
+```{r}
+set.seed(20141)
+g_la <- g_w
+label <- cluster_label_prop(g_la) 
+```
+
+```{r}
+l_cla <- length(label)
+cat('The number of clusters of label propagation are:',l_cla,'\n')
+```
+
+
+```{r}
+set.seed(40026)
+plot(label, g_la, vertex.size=5, vertex.label=NA, asp=.5, main="Label propagation clustering")
+```
+
+
+```{r}
+table(membership(label))
+```
+```{r}
+membership_info <- membership(label)
+
+# Create a table of memberships
+membership_table <- table(membership_info)
+
+vertex_names <- V(g_la)$name
+
+
+cluster1_nodes <- vertex_names[membership_info == 1]
+cluster2_nodes <- vertex_names[membership_info == 2]
+
+# Print the countries in each cluster
+cat("Countries in Cluster 1:\n")
+print(cluster1_nodes)
+
+cat("Countries in Cluster 2:\n")
+print(cluster2_nodes)
+
+```
+
+We calculate the modularity score also for the Label propagation algorithm, to understand how well the method is able to divide the network into clusters.
+
+```{r}
+mod_la <- modularity(label)
+cat('The modularity Coefficient is:',mod_la,'\n')
+```
+
+### Clustering by edge betweenness
+
+This approach uses edge betweenness to identify distinct regions or communities within the network. Edges with high betweenness are considered bridges between different parts of the network. Therefore, identifying groups of nodes that are strongly connected through these edges can reveal natural communities or clusters within the network structure.
+
+```{r}
+set.seed(20141)
+g_ceb <- g_w
+ceb <- cluster_edge_betweenness(g_ceb)
+```
+
+```{r}
+l_ceb <- length(ceb)
+cat('The number of clusters of cluster edge betweenness are:',l_ceb,'\n')
+```
+
+```{r}
+mod_ceb <- modularity(ceb)
+cat('The Modularity Coefficient is:',mod_ceb,'\n')
+```
+
+This suggests that the algorithm did not identify any meaningful community structure within the network. In other words, the network remains as a single connected component without breaking down into smaller, distinct clusters.
+
+This could happen because the network could be highly connected, with most nodes being directly or indirectly connected to each other through multiple pathways, making it difficult for the algorithm to find edges that significantly increase modularity when removed.
+
+
+## Modularity Scores table
+
+```{r}
+mod_tab <- cbind(mod_wk, mod_la,  mod_ceb)
+mod_tab
+```
+
+Walktrap algorithm and Label propagation clustering have very similar modularity score. This means that there is no particular difference in how well the methods divide the network into communities, in fact they both suggest 2 clusters with similar size. 
+Instead, as we have seen previously, edge by betweenness clustering has a modularity score equal to 0 because it was not able to detect any community inside the network.
+
+
+## Subgraphing
+
+### Assigning nodes membership
+
+We will conduct a thorough analysis of two subgraphs of our network, which represent the two clusters identified in our study. To achieve this, we will employ the clustering division derived from the Walktrap algorithm. This algorithm is particularly suitable for our purposes as it has demonstrated the ability to achieve the highest modularity score among the available options. 
+
+```{r}
+cluster_df <- data.frame(as.list(membership(wk)))
+cluster_df <- as.data.frame(t(cluster_df))
+cluster_df$id <- rownames(cluster_df)
+
+nodes_df$id <- rownames(nodes_df)
+
+cluster_nodes <- merge(cluster_df, nodes_df, by = "id", all.x = TRUE)
+cluster_nodes <- rename(cluster_nodes, "cluster" = "V1")
+
+```
+
+```{r}
+library(visNetwork)
+colnames(links_df)<-c("from", "to")
+
+visNetwork(cluster_nodes, links_df, width = "200%") %>%
+  visIgraphLayout() %>%
+  visNodes(
+    shape = "dot",
+    color = list(
+      background = "#0085AF",
+      border = "#013848",
+      highlight = "#FF8000"
+    ),
+    shadow = list(enabled = TRUE, size = 10)
+  ) %>%
+  visEdges(
+    shadow = FALSE,
+    color = list(color = "#0085AF", highlight = "#C62F4B")
+  ) %>%
+  visOptions(highlightNearest = list(enabled = T, degree = 1, hover = T),
+             selectedBy = "cluster") %>% 
+  visLayout(randomSeed = 11)
+```
+
+
+```{r}
+links_2 <- data
+links_2$id <- links_2$from
+prova_merge <- merge(links_2, cluster_nodes, by="id", all.x=TRUE)
+```
+
+```{r}
+prova_merge <- merge(prova_merge, cluster_nodes, by.x = "to", by.y = "id", all.x = TRUE)
+prova_merge <- rename(prova_merge, "cluster_to" = "cluster.y")
+prova_merge <- rename(prova_merge, "cluster_from" = "cluster.x")
+prova_merge <- prova_merge[c("id", "from", "to", "amount", "cluster_from", "cluster_to")]
+
+library(dplyr)
+
+prova_merge <- prova_merge %>% arrange(from)
+```
+
+```{r}
+df_clu1 <- prova_merge[prova_merge$cluster_from==1 & prova_merge$cluster_to == 1, ]
+A <- df_clu1[,-1]
+
+head(A)
+```
+
+```{r}
+df_clu2 <- prova_merge[prova_merge$cluster_from==2 & prova_merge$cluster_to == 2, ]
+B <- df_clu2[,-1]
+head(B)
+```
+
+## Subgraphs
+
+### Plot subgraph cluster 1
+```{r}
+g_cl1 <- graph_from_data_frame(A, directed = T)
+E(g_cl1)$weight <- A$amount
+
+vis_g_cl1 <- toVisNetworkData(g_cl1)
+
+visNetwork(
+  nodes = vis_g_cl1$nodes,
+  edges = vis_g_cl1$edges,
+  width = "100%",
+  height = '500px'
+)
+```
+
+```{r}
+vcount(g_cl1)
+```
+
+### Plot subgraph cluster 2
+```{r}
+g_cl2 <- graph_from_data_frame(B, directed = TRUE)
+
+E(g_cl2)$weight <- B$amount
+
+vis_g_cl2 <- toVisNetworkData(g_cl2)
+
+visNetwork(
+  nodes = vis_g_cl2$nodes,
+  edges = vis_g_cl2$edges,
+  width = "100%",
+  height = '500px'
+)
+```
+
+```{r}
+vcount(g_cl2)
+```
+
+### Subgraphs degree distribution
+
+```{r}
+d_c1 <- degree(g_cl1, loops = F)
+d_c2 <- degree(g_cl2, loops = F)
+d_c1
+d_c2
+```
+
+```{r}
+par(mfrow = c(1,2))
+hist(d_c1, breaks=15, xlab="Degree", main="Degree of America and Oceania cluster", col=hcl.colors(length(b), rev = F, palette= 'blues'), border="black")
+hist(d_c2, breaks=15, xlab="Degree", main="Degree of European cluster", col=hcl.colors(length(b), rev = F, palette= 'blues'), border="black")
+```
+
+### Subgraphs transitivity
+
+```{r}
+t_c1 <- transitivity(g_cl1)
+t_c2 <- transitivity(g_cl2)
+
+trans_tab <- cbind(t_c1, t_c2)
+trans_tab
+```
+
+### Subgraphs strength
+
+```{r}
+s_c1 <- strength(g_cl1)
+s_c1
+```
+```{r}
+s_c2 <- strength(g_cl2)
+s_c2
+```
+
+
+```{r}
+par(mfrow = c(1, 2))
+hist(s_c1, main="Strength of  America and Oceania cluster", xlab="strength", breaks=20, col=hcl.colors(length(b), rev = F, palette= 'blues'), border="black")
+hist(s_c2, main="Strength of European cluster", xlab="strength", breaks=20, col=hcl.colors(length(b), rev = F, palette= 'blues'), border="black")
+```
+
+### Subgraphs betweenness
+
+```{r}
+b_c1 <- betweenness(g_cl1)
+b_c2 <- betweenness(g_cl2)
+b_c1
+b_c2
+```
+
+
+```{r}
+par(mfrow = c(1, 2))
+hist(b_c1, main="Betweenness of  America and Oceania cluster", xlab="Betweenness", breaks=20, col=hcl.colors(length(b), rev = F, palette= 'blues'), border="black")
+hist(b_c2, main="Betweenness of European Cluster", xlab="Betweenness", breaks=20, col=hcl.colors(length(b), rev = F, palette= 'blues'), border="black")
+```
+
+### subgraphs transitivity
+
+```{r}
+t_eu <- transitivity(g_cl2); t_eu
+t_am <- transitivity(g_cl1); t_am
+```
+
+### Important countries in each cluster
+
+```{r}
+par(mfrow= c(1,2))
+plot(s_c1, b_c1, ylab="Betweenness", xlab= "Strength", main= "Betweenness vs Strength", pch=16, col=hcl.colors(length(b), rev = F, palette= 'blues'))
+plot(s_c2, b_c2, ylab="Betweenness", xlab= "Strength", main= "Betweenness vs Strength", pch=16, col=hcl.colors(length(b), rev = F, palette='blues'))
+```
+Given the fact that, as in the full network, the countries with the highest strength have the lowest betweenness and viceversa (as it is possible to observe from the 2 plots above), we decided to consider the most important characters for each cluster the two countries which have the highest betweenness and stregth.
+
+```{r}
+max_s1 <- names(which.max(s_c1)); max_s1 #highest strength cluster 1
+max_b1 <- names(which.max(b_c1)); max_b1 #highest betweenness cluster 1 
+```
+
+```{r}
+max_s2 <- names(which.max(s_c2)); max_s2 #highest strength cluster 2 
+max_b2 <- names(which.max(b_c2)); max_b2 #highest betweenness cluster 2
+```
+
+In our analysis, we found that the country with the highest strength in one cluster is **Germany**, while in the other cluster, it is the **USA**. Strength, in this context, refers to the sum of the weights of the edges connected to a node, indicating the total volume of connections or interactions that a country has within the network.
+
+Germany and the USA are both highly connected and influential countries in various global networks, such as trade, finance, and international relations. It is reasonable to find them having the highest strength in their respective clusters because they typically have extensive and high-volume connections with many other countries.
+
+Furthermore, we can conclude that New Zealand has the highest betweenness centrality in one cluster, while Iceland holds the highest betweenness centrality in the other cluster. As we mentioned before, betweenness centrality measures the extent to which a node lies on the shortest paths between other nodes, indicating its role as a bridge or intermediary in the network.
+
+
+## Conclusions
+
+To conclude, we want to focus on some key points of our analysis:
+
+- **Network Density and Connectivity**:
+The overall network density is relatively low, suggesting that while some countries have numerous trade connections, many others are sparsely connected. This implies potential opportunities for increasing trade connections between less connected countries.
+
+- **Network Structure and Centrality**:
+Centrality measures such as degree centrality, strength  were utilized to identify influential countries within the network. Countries with high degree centrality (e.g., USA, Germany, China) serve as major trade hubs, facilitating a large number of trade connections.
+
+- **Community Detection**:
+Community detection algorithms, such as the Walktrap method, revealed the presence of distinct trade communities or clusters within the global trade network. These communities often correspond to geographical regions or economic blocs, indicating strong intra-community trade relationships.The identification of these communities helps in understanding the modular structure of the trade network and the economic dependencies between different regions.
+
+
+
+
